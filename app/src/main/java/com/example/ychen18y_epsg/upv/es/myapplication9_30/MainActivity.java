@@ -1,5 +1,6 @@
 package com.example.ychen18y_epsg.upv.es.myapplication9_30;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
@@ -7,6 +8,7 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 
@@ -413,28 +415,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // _______________________________________________________________
-    public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                                           int[] grantResults) {
-        super.onRequestPermissionsResult( requestCode, permissions, grantResults);
-
-        switch (requestCode) {
-            case CODIGO_PETICION_PERMISOS:
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 &&
-                        grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    Log.d(ETIQUETA_LOG, " onRequestPermissionResult(): permisos concedidos  !!!!");
-                    // Permission is granted. Continue the action or workflow
-                    // in your app.
-
-                }  else {
-
-                    Log.d(ETIQUETA_LOG, " onRequestPermissionResult(): Socorro: permisos NO concedidos  !!!!");
-                }
-                return;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == 1) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, you can now access the location
+                Toast.makeText(this, "Location Permission Granted", Toast.LENGTH_SHORT).show();
+            } else {
+                // Permission denied, show an error or a prompt
+                Toast.makeText(this, "Location Permission Denied", Toast.LENGTH_SHORT).show();
+            }
         }
-
     }
+
 
     // _______________________________________________________________
     public void boton_prueba_pulsado(View quien) {
@@ -484,17 +477,52 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // _______________________________________________________________
+    @SuppressLint("MissingPermission")
     public void boton_enviar_pulsado_client(View quien) {
         Log.d("clienterestandroid", "boton_enviar_pulsado_client");
 
         LocationManager locManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        @SuppressLint("MissingPermission") Location loc = locManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-        if (loc == null) {
-            Toast.makeText(this, "Unable to get location", Toast.LENGTH_SHORT).show();
+        // Ensure permissions are granted before requesting updates
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Location permission not granted", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        LocationListener locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull Location location) {
+                // Use the updated location
+                double latitude = location.getLatitude();
+                double longitude = location.getLongitude();
+                Log.d("clienterestandroid", "Location Updated: " + latitude + ", " + longitude);
+
+                // Stop further location updates
+                locManager.removeUpdates(this);
+
+                // Now that we have the location, we can proceed with the rest of the function
+                enviarDatosConUbicacion(latitude, longitude);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+            @Override
+            public void onProviderEnabled(String provider) {}
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Toast.makeText(MainActivity.this, "Please enable GPS", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        // Request location updates (this ensures we get the latest location)
+        locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+    }
+
+
+    private void enviarDatosConUbicacion(double latitude, double longitude) {
         // 获取输入数据
         String temperaturaStr = temperaturaInput.getText().toString();
         String coStr = coInput.getText().toString();
@@ -512,6 +540,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             postData.put("sensorType", 1); // 1表示CO，或根据实际情况传递值
             postData.put("value", co);
+            postData.put("latitude", latitude); // Adding latitude
+            postData.put("longitude", longitude); // Adding longitude
         } catch (JSONException e) {
             e.printStackTrace();
             return;
@@ -540,6 +570,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
 
     // 发送数据的方法
     private void sendSensorDataToServer(int sensorType, double value) {
