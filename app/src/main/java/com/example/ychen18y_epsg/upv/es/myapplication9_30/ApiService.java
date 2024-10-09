@@ -9,11 +9,18 @@ import retrofit2.http.POST;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 
-
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.POST;
+import retrofit2.http.GET;
+import retrofit2.http.Query;
 
 public interface ApiService {
     @POST("insert_measurement.php")
-    Call<ResponseBody> insertMeasurement(@Body JSONObject postData);
+    Call<ResponseBody> insertMeasurement(@Body RequestBody postData);
 
     @GET("insert_measurement.php")
     Call<ResponseBody> checkMeasurement(
