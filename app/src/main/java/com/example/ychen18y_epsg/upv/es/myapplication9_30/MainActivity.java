@@ -43,6 +43,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
+import java.io.IOException;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 import retrofit2.Call;
 
 
@@ -436,17 +444,22 @@ public class MainActivity extends AppCompatActivity {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
         // Make the GET request
-        Call<JSONObject> call = apiService.checkMeasurement(
+        Call<ResponseBody> call = apiService.checkMeasurement(
                 temperaturaInput.getText().toString(),
                 coInput.getText().toString()
         );
 
-        call.enqueue(new retrofit2.Callback<JSONObject>() {
+        call.enqueue(new retrofit2.Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<JSONObject> call, retrofit2.Response<JSONObject> response) {
+            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     try {
-                        JSONObject jsonResponse = response.body();
+                        // Convert the ResponseBody to a string
+                        String responseBodyString = response.body().string();
+
+                        // Parse the string as a JSON object
+                        JSONObject jsonResponse = new JSONObject(responseBodyString);
+
                         String success = jsonResponse.getString("success");
                         String message = jsonResponse.getString("message");
 
@@ -456,8 +469,8 @@ public class MainActivity extends AppCompatActivity {
                         // Display a Toast message for user feedback
                         Toast.makeText(getApplicationContext(), "Response: " + message, Toast.LENGTH_LONG).show();
 
-                    } catch (JSONException e) {
-                        Log.e("clienterestandroid", "JSON parsing error: " + e.getMessage());
+                    } catch (JSONException | IOException e) {
+                        Log.e("clienterestandroid", "JSON parsing or IO error: " + e.getMessage());
                     }
                 } else {
                     Log.d("clienterestandroid", "Request failed with response code: " + response.code());
@@ -467,14 +480,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<JSONObject> call, Throwable t) {
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Log.e("clienterestandroid", "Network request failed: " + t.getMessage());
                 Toast.makeText(getApplicationContext(), "Network error: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
-
-
     }
+
 
     // _______________________________________________________________
     @SuppressLint("MissingPermission")
@@ -523,7 +535,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void enviarDatosConUbicacion(double latitude, double longitude) {
-        // 获取输入数据
+        // Get input data
         String temperaturaStr = temperaturaInput.getText().toString();
         String coStr = coInput.getText().toString();
 
@@ -535,10 +547,10 @@ public class MainActivity extends AppCompatActivity {
         double temperatura = Double.parseDouble(temperaturaStr);
         double co = Double.parseDouble(coStr);
 
-        // 创建POST数据的JSON对象
+        // Create POST data as a JSONObject
         JSONObject postData = new JSONObject();
         try {
-            postData.put("sensorType", 1); // 1表示CO，或根据实际情况传递值
+            postData.put("sensorType", 1); // 1 represents CO, or pass the appropriate value
             postData.put("value", co);
             postData.put("latitude", latitude); // Adding latitude
             postData.put("longitude", longitude); // Adding longitude
@@ -547,16 +559,22 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 使用Retrofit进行POST请求
+        // Use Retrofit to make the POST request
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        Call<JSONObject> call = apiService.insertMeasurement(postData);
+        Call<ResponseBody> call = apiService.insertMeasurement(postData);
 
-        call.enqueue(new retrofit2.Callback<JSONObject>() {
+        // Enqueue the request
+        call.enqueue(new Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<JSONObject> call, retrofit2.Response<JSONObject> response) {
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    Log.d("clienterestandroid", "Server response: " + response.body().toString());
-                    Toast.makeText(getApplicationContext(), "Data sent successfully!", Toast.LENGTH_SHORT).show();
+                    try {
+                        String responseBody = response.body().string(); // Convert ResponseBody to string
+                        Log.d("clienterestandroid", "Server response: " + responseBody);
+                        Toast.makeText(getApplicationContext(), "Data sent successfully!", Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 } else {
                     Log.d("clienterestandroid", "Request failed with code: " + response.code());
                     Toast.makeText(getApplicationContext(), "Data sending failed with code: " + response.code(), Toast.LENGTH_SHORT).show();
@@ -564,7 +582,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<JSONObject> call, Throwable t) {
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Log.e("clienterestandroid", "Request failed: " + t.getMessage());
                 Toast.makeText(getApplicationContext(), "Network error: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
@@ -574,7 +592,7 @@ public class MainActivity extends AppCompatActivity {
 
     // 发送数据的方法
     private void sendSensorDataToServer(int sensorType, double value) {
-        // 创建POST数据的JSON对象
+        // Create POST data as a JSONObject
         JSONObject postData = new JSONObject();
         try {
             postData.put("sensorType", sensorType);
@@ -586,14 +604,16 @@ public class MainActivity extends AppCompatActivity {
 
         // 使用Retrofit进行POST请求
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        Call<JSONObject> call = apiService.insertMeasurement(postData);
+        Call<ResponseBody> call = apiService.insertMeasurement(postData);
 
-        call.enqueue(new retrofit2.Callback<JSONObject>() {
+        // Enqueue the request
+        call.enqueue(new Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<JSONObject> call, retrofit2.Response<JSONObject> response) {
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     try {
-                        JSONObject jsonResponse = response.body();
+                        String responseBody = response.body().string();
+                        JSONObject jsonResponse = new JSONObject(responseBody);
                         String success = jsonResponse.getString("success");
                         String message = jsonResponse.getString("message");
 
@@ -604,20 +624,19 @@ public class MainActivity extends AppCompatActivity {
                             Log.d(ETIQUETA_LOG, "Data saving failed: " + message);
                             Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
                         }
-                    } catch (JSONException e) {
+                    } catch (JSONException | IOException e) {
                         e.printStackTrace();
                     }
                 } else {
-                    Log.d(ETIQUETA_LOG, "Data saving failed ");
+                    Log.d(ETIQUETA_LOG, "Data saving failed with code: " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(Call<JSONObject> call, Throwable t) {
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Log.d(ETIQUETA_LOG, "Error: " + t.getMessage());
             }
         });
     }
-
-
 }
+
