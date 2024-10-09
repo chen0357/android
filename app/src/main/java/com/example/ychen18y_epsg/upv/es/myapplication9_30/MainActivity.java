@@ -554,8 +554,11 @@ public class MainActivity extends AppCompatActivity {
         // Create POST data as a JSONObject
         JSONObject postData = new JSONObject();
         try {
-            postData.put("sensorType", 1); // 1 represents CO, or pass the appropriate value
-            postData.put("value", co);
+            // Upload both CO and Temperature data
+            postData.put("sensorTypeCO", 1); // 1 represents CO
+            postData.put("valueCO", co);  // CO value
+            postData.put("sensorTypeTemp", 2); // 2 represents Temperature
+            postData.put("valueTemp", temperatura);  // Temperature value
             postData.put("latitude", latitude); // Adding latitude
             postData.put("longitude", longitude); // Adding longitude
         } catch (JSONException e) {
@@ -596,6 +599,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
 
 
 
